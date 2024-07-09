@@ -1,7 +1,10 @@
-from unityagents import UnityEnvironment
+# from mlagents import UnityEnvironment # unityagents pkg changed to mlagents pkg
+import mlagents
+import mlagents_envs
+from mlagents_envs.environment import UnityEnvironment
 import numpy as np
 
-env = UnityEnvironment(file_name='/data/Reacher_Linux_NoVis/Reacher.x86_64')
+env = UnityEnvironment(file_name='\\Reacher_Windows_x86_64\\Reacher.exe')
 
 brain_name = env.brain_names[0]
 brain = env.brains[brain_name]
@@ -13,9 +16,11 @@ import torch.nn.functional as F
 import torch.optim as optim
 import time
 from workspace_utils import active_session
+
 agent = Agent(state_size=33, action_size=4, random_seed=2)
 
-num_agents = len(env_info.agents)
+env_info = env.reset(train_mode=True)[brain_name]
+num_agents = len(env_info.agents) #refferenced before assignment 
 def ddpg(n_episodes=2000, max_t=1000):
     
     print("Enter ddpg...\n")
