@@ -1,8 +1,7 @@
 import signal
- 
 from contextlib import contextmanager
- 
 import requests
+import socket
  
  
 DELAY = INTERVAL = 4 * 60  # interval time in seconds
@@ -10,7 +9,13 @@ MIN_DELAY = MIN_INTERVAL = 2 * 60
 KEEPALIVE_URL = "https://nebula.udacity.com/api/v1/remote/keep-alive"
 TOKEN_URL = "http://metadata.google.internal/computeMetadata/v1/instance/attributes/keep_alive_token"
 TOKEN_HEADERS = {"Metadata-Flavor":"Google"}
- 
+
+def is_google_cloud_environemnt():
+    try:
+        socket.gethostbyname('metadata.google.internal')
+        return True
+    except socket.error:
+        return False
  
 def _request_handler(headers):
     def _handler(signum, frame):
@@ -28,8 +33,11 @@ def active_session(delay=DELAY, interval=INTERVAL):
     with active_session():
         # do long-running work here
     """
-    token = requests.request("GET", TOKEN_URL, headers=TOKEN_HEADERS).text
-    headers = {'Authorization': "STAR " + token}
+    headers = {}
+    if is_google_cloud_environemnt():
+        token = requests.request("GET", TOKEN_URL, headers=TOKEN_HEADERS).text
+        headers = {'Authorization': "STAR " + token}
+        
     delay = max(delay, MIN_DELAY)
     interval = max(interval, MIN_INTERVAL)
     original_handler = signal.getsignal(signal.SIGALRM)
