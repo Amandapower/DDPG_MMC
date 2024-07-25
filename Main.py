@@ -1,19 +1,18 @@
-# from mlagents import UnityEnvironment # unityagents pkg changed to mlagents pkg
-# import mlagents
-# import mlagents_envs
 from mlagents_envs.environment import UnityEnvironment
+from mlagents_envs.base_env import ActionTuple
 import numpy as np
 from ddpg_agent import Agent 
 from collections import deque
 import torch
 import torch.nn.functional as F
-# import torch.optim as optim
 import time
 from workspace_utils import active_session
-# import os
+import os
 
-env_name = "C:\\Users\\Amanda\\Documents\\MouseNet Research\\Roller_ball_test\\Roller_ball_executable\\Roller_ball_test.exe"
-# env_name = "C:\\Users\\Amanda\\Documents\\MouseNet Research\\robotics_reaching_environment\\hand_agent_executable\\robotics_reaching_environment.exe" # Path to unvity environment binary to launch
+env_name = "/root/DDPG/DDPG_MMC/Roller_ball_server_build_linux/Roller_ball_executable_linux.x86_64" # Path to roller ball test linux env
+
+# Ensure the executable has the necessary permissions 
+os.chmod(env_name, 0o755)
 
 try: 
     # Launch unity environment
@@ -32,6 +31,10 @@ try:
         behaviour_name = list(env.behavior_specs.keys())[0]
         print(f"Behaviour name: {behaviour_name}")
 
+        # Get what actions the environment expects and the required shape
+        behaviour_spec = env.behavior_specs[behaviour_name]
+        print(f"Behaviour specifications: {behaviour_spec.action_spec}")
+
         # Get the number of agents 
         decisionSteps, terminalSteps = env.get_steps(behavior_name=behaviour_name)
         num_agents = len(decisionSteps) + len(terminalSteps)
@@ -39,6 +42,7 @@ try:
 
 except Exception as e:
     print(f"Error initializing environment: {e}")
+    behavior_name = None
 
 
 agent = Agent(state_size=8, action_size=2, random_seed=2) # Altered from origional to fit new environment
@@ -50,6 +54,7 @@ def ddpg(n_episodes=2000, max_t=1000):
     print("Enter ddpg...\n")
     scores_deque = deque(maxlen=100)
     scores = []
+    actions = []
     best_score = 0
     best_average_score = 0
     for i_episode in range(1, n_episodes+1):
@@ -61,10 +66,21 @@ def ddpg(n_episodes=2000, max_t=1000):
 
         #get the decision and terminal steps
         decisionSteps, terminalSteps = env.get_steps(behavior_name=behaviour_name)
+        print("Printing decisionSteps: " )
+        print(decisionSteps)
+        print(type(decisionSteps))
 
         # get number of agents
-        num_agents = len(decisionSteps) + len(terminalSteps)
+        num_agents = len(decisionSteps)
         print(f"Number of agents: {num_agents}")
+
+        # get number of continuous actions
+        num_continuous_actions = env.behavior_specs[behaviour_name].action_spec.continuous_size
+
+        # create 2D numpy array of continuous actions 
+        continuous_actions = np.random.rand(num_agents, num_continuous_actions).astype(np.float32)
+        # create actiontuple
+        action_tuple = ActionTuple(continuous=continuous_actions)
 
         # get the states vectory
         stateVector = decisionSteps.obs[0]
@@ -75,11 +91,20 @@ def ddpg(n_episodes=2000, max_t=1000):
         agent.reset()
         for t in range(max_t):
 
-            #choose actions
-            actions = agent.act(stateVector)
+            # #choose actions
+            # actions = agent.act(stateVector)
+            # print("Printing actions:  ", actions)
+            # print("Printing actions shape: ", actions.shape)
+
+            # # Ensure actions are in the correct format to set them
+            # if actions.ndim == 1:
+            #     actions = np.expand_dims(actions, axis=0)
+
+            # action_tuple = ActionTuple(continuous=actions)
+            # print("Action tuple: ", action_tuple)
 
             # set the actions for the behaviour and step the environment
-            env.set_actions(behavior_name=behaviour_name, action=actions)
+            env.set_actions(behavior_name=behaviour_name, action=action_tuple)
 
             # Step the environment to get the next states 
             env.step()
