@@ -104,6 +104,12 @@ def ddpg(n_episodes=2000, max_t=1000):
 
             # get the next states
             decisionSteps, terminalSteps = env.get_steps(behavior_name=behaviour_name)
+            print(f"Step {t}, Decision steps: {len(decisionSteps)}, Terminal steps: {len(terminalSteps)}")
+
+            # Check if all agents are in terminal state
+            if len(decisionSteps)==0 and len(terminalSteps)>0:
+                print(f"All agents are in terminal states at step {t}. Ending episode early.")
+                break
 
             # extract the next states vector from the decision steps 
             next_state_vector = decisionSteps.obs[0]
@@ -115,16 +121,16 @@ def ddpg(n_episodes=2000, max_t=1000):
             print("rewards shape: ", rewards.shape)
             print("rewards: ", rewards)
 
-            # rewards = env_info.rewards
             episode_finished = np.array([len(terminalSteps) > 0] * num_agents) # episode_fiished values must be passed into agent.step function as an array
             print("Episode finished: ", episode_finished)
 
             # see if episode has finished
-            agent.step(stateVector, actions, rewards, next_state_vector, episode_finished)
-            stateVector = next_state_vector
+            if next_state_vector is not None: 
+                agent.step(stateVector, actions, rewards, next_state_vector, episode_finished)
+                stateVector = next_state_vector
             #Check if scores-agents and rewards are compatible for addition
-            # scores_agents = np.add(scores_agents, rewards)
-            scores_agents += rewards
+            scores_agents = np.add(scores_agents, rewards)
+            # scores_agents += rewards
             if np.any(episode_finished):
                 break
 
