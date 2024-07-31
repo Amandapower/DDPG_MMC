@@ -9,7 +9,8 @@ import time
 from workspace_utils import active_session
 import os
 
-env_name = "/root/DDPG/DDPG_MMC/robotics_reaching_executable_linux/robotics_reaching_exe_linux.x86_64" # Path to roller ball test linux env
+# env_name = "/root/DDPG/DDPG_MMC/robotics_reaching_executable_linux/robotics_reaching_exe_linux.x86_64" # Path to robotics reaching exe
+env_name = "/root/DDPG/DDPG_MMC/robotics_reaching_executable_linux_no_log/robotics_reaching_exe_linux.x86_64" # Path to robotics reaching exe wihtout script debugging
 
 # Ensure the executable has the necessary permissions 
 os.chmod(env_name, 0o755)
