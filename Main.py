@@ -9,7 +9,7 @@ import time
 from workspace_utils import active_session
 import os
 
-env_name = "/root/DDPG/DDPG_MMC/Roller_ball_server_build_linux/Roller_ball_executable_linux.x86_64" # Path to roller ball test linux env
+env_name = "/root/DDPG/DDPG_MMC/robotics_reaching_executable_linux/robotics_reaching_exe_linux.x86_64" # Path to roller ball test linux env
 
 # Ensure the executable has the necessary permissions 
 os.chmod(env_name, 0o755)
@@ -79,29 +79,22 @@ def ddpg(n_episodes=2000, max_t=1000):
 
         # create 2D numpy array of continuous actions 
         continuous_actions = np.random.rand(num_agents, num_continuous_actions).astype(np.float32)
+
         # create actiontuple
         action_tuple = ActionTuple(continuous=continuous_actions)
 
-        # get the states vectory
+        # get the states vector
         stateVector = decisionSteps.obs[0]
 
         #init score agents
         scores_agents = np.zeros(num_agents)
+        print("scores_agents type: ", type(scores_agents))
+        print("scores_agents shape: ", scores_agents.shape)
+
         score = 0
         agent.reset()
+
         for t in range(max_t):
-
-            # #choose actions
-            # actions = agent.act(stateVector)
-            # print("Printing actions:  ", actions)
-            # print("Printing actions shape: ", actions.shape)
-
-            # # Ensure actions are in the correct format to set them
-            # if actions.ndim == 1:
-            #     actions = np.expand_dims(actions, axis=0)
-
-            # action_tuple = ActionTuple(continuous=actions)
-            # print("Action tuple: ", action_tuple)
 
             # set the actions for the behaviour and step the environment
             env.set_actions(behavior_name=behaviour_name, action=action_tuple)
@@ -110,7 +103,6 @@ def ddpg(n_episodes=2000, max_t=1000):
             env.step()
 
             # get the next states
-            # get the decision and terminal steps
             decisionSteps, terminalSteps = env.get_steps(behavior_name=behaviour_name)
 
             # extract the next states vector from the decision steps 
@@ -119,15 +111,19 @@ def ddpg(n_episodes=2000, max_t=1000):
 
             # get the rewards
             rewards = decisionSteps.reward
-            print("Rewards: ", rewards)
+            print("rewards type: ", type(rewards))
+            print("rewards shape: ", rewards.shape)
+            print("rewards: ", rewards)
 
             # rewards = env_info.rewards
-            episode_finished = len(terminalSteps) > 0
+            episode_finished = np.array([len(terminalSteps) > 0] * num_agents) # episode_fiished values must be passed into agent.step function as an array
             print("Episode finished: ", episode_finished)
 
             # see if episode has finished
             agent.step(stateVector, actions, rewards, next_state_vector, episode_finished)
             stateVector = next_state_vector
+            #Check if scores-agents and rewards are compatible for addition
+            # scores_agents = np.add(scores_agents, rewards)
             scores_agents += rewards
             if np.any(episode_finished):
                 break
