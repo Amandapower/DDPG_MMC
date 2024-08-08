@@ -50,7 +50,7 @@ agent = Agent(state_size=8, action_size=2, random_seed=2) # Altered from origion
 
 # Code runs until this point 
 
-def ddpg(n_episodes=2000, max_t=1000):
+def ddpg(n_episodes=5, max_t=1000):
     
     print("Enter ddpg...\n")
     scores_deque = deque(maxlen=100)
@@ -58,107 +58,116 @@ def ddpg(n_episodes=2000, max_t=1000):
     actions = []
     best_score = 0
     best_average_score = 0
-    for i_episode in range(1, n_episodes+1):
-        
-        avg_score = 0
+    try:
+        for i_episode in range(1, n_episodes+1):
 
-        # reset the environment
-        env.reset()
+            print(f"Episode number: {i_episode}")
+            avg_score = 0
 
-        #get the decision and terminal steps
-        decisionSteps, terminalSteps = env.get_steps(behavior_name=behaviour_name)
-        print("Printing decisionSteps: " )
-        print(decisionSteps)
-        print(type(decisionSteps))
+            # reset the environment
+            env.reset()
 
-        # get number of agents
-        num_agents = len(decisionSteps)
-        print(f"Number of agents: {num_agents}")
-
-        # get number of continuous actions
-        num_continuous_actions = env.behavior_specs[behaviour_name].action_spec.continuous_size
-
-        # create 2D numpy array of continuous actions 
-        continuous_actions = np.random.rand(num_agents, num_continuous_actions).astype(np.float32)
-
-        # create actiontuple
-        action_tuple = ActionTuple(continuous=continuous_actions)
-
-        # get the states vector
-        stateVector = decisionSteps.obs[0]
-
-        #init score agents
-        scores_agents = np.zeros(num_agents)
-        print("scores_agents type: ", type(scores_agents))
-        print("scores_agents shape: ", scores_agents.shape)
-
-        score = 0
-        agent.reset()
-
-        for t in range(max_t):
-
-            # set the actions for the behaviour and step the environment
-            env.set_actions(behavior_name=behaviour_name, action=action_tuple)
-
-            # Step the environment to get the next states 
-            env.step()
-
-            # get the next states
+            #get the decision and terminal steps
             decisionSteps, terminalSteps = env.get_steps(behavior_name=behaviour_name)
-            print(f"Step {t}, Decision steps: {len(decisionSteps)}, Terminal steps: {len(terminalSteps)}")
+            print("Printing decisionSteps: " )
+            print(decisionSteps)
+            print(type(decisionSteps))
 
-            # Check if all agents are in terminal state
-            if len(decisionSteps)==0 and len(terminalSteps)>0:
-                print(f"All agents are in terminal states at step {t}. Ending episode early.")
+            # get number of agents
+            num_agents = len(decisionSteps)
+            print(f"Number of agents: {num_agents}")
+
+            # get number of continuous actions
+            num_continuous_actions = env.behavior_specs[behaviour_name].action_spec.continuous_size
+
+            # create 2D numpy array of continuous actions 
+            continuous_actions = np.random.rand(num_agents, num_continuous_actions).astype(np.float32)
+
+            # create actiontuple
+            action_tuple = ActionTuple(continuous=continuous_actions)
+
+            # get the states vector
+            stateVector = decisionSteps.obs[0]
+
+            #init score agents
+            scores_agents = np.zeros(num_agents)
+            print("scores_agents type: ", type(scores_agents))
+            print("scores_agents shape: ", scores_agents.shape)
+
+            score = 0
+            agent.reset()
+
+            for t in range(max_t):
+
+                try:
+                    # Checkpoint to ensure it's not getting stuck
+                    if t % 100 == 0: 
+                        print(f"Progressing at step {t}")
+                except Exception as e:
+                    print(f"An error occurred: {e}")
+                    break
+
+                # set the actions for the behaviour and step the environment
+                env.set_actions(behavior_name=behaviour_name, action=action_tuple)
+
+                # Step the environment to get the next states 
+                env.step()
+
+                # get the next states
+                decisionSteps, terminalSteps = env.get_steps(behavior_name=behaviour_name)
+                print(f"Step {t}, Decision steps: {len(decisionSteps)}, Terminal steps: {len(terminalSteps)}")
+
+                # Check if all agents are in terminal state
+                if len(decisionSteps)==0 and len(terminalSteps)>0:
+                    print(f"All agents are in terminal states at step {t}. Ending episode early.")
+                    break
+
+                # extract the next states vector from the decision steps 
+                next_state_vector = decisionSteps.obs[0]
+                print("Next state vector: ", next_state_vector)
+
+                # get the rewards
+                rewards = decisionSteps.reward
+                print("rewards type: ", type(rewards))
+                print("rewards shape: ", rewards.shape)
+                print("rewards: ", rewards)
+
+                episode_finished = np.array([len(terminalSteps) > 0] * num_agents) # episode_fiished values must be passed into agent.step function as an array
+                print("Episode finished: ", episode_finished)
+
+                # see if episode has finished
+                if next_state_vector is not None: 
+                    agent.step(stateVector, actions, rewards, next_state_vector, episode_finished)
+                    stateVector = next_state_vector
+                #Check if scores-agents and rewards are compatible for addition
+                scores_agents = np.add(scores_agents, rewards)
+                # scores_agents += rewards
+                if np.any(episode_finished):
+                    break
+
+            # mean score of 20 agents in this episode
+            score = np.mean(scores_agents)
+            scores_deque.append(score)
+            avg_score = np.mean(scores_deque)
+            scores.append(score)
+
+            #refresh the best agent score
+            if score > best_score:
+                best_score = score
+
+            #refresh the best average score    
+            if avg_score > best_average_score:
+                best_average_score = avg_score
+            
+            #print current episode
+            print("Episode:{}, Score:{:.2f}, Best Score:{:.2f}, Average Score:{:.2f}, Best Avg Score:{:.2f}".format(
+                i_episode, score, best_score, avg_score, best_average_score))
+            if (avg_score >= 32):
+                torch.save(agent.actor_local.state_dict(), 'actor_solved.pth')
+                torch.save(agent.critic_local.state_dict(), 'critic_solved.pth')
                 break
-
-            # extract the next states vector from the decision steps 
-            next_state_vector = decisionSteps.obs[0]
-            print("Next state vector: ", next_state_vector)
-
-            # get the rewards
-            rewards = decisionSteps.reward
-            print("rewards type: ", type(rewards))
-            print("rewards shape: ", rewards.shape)
-            print("rewards: ", rewards)
-
-            episode_finished = np.array([len(terminalSteps) > 0] * num_agents) # episode_fiished values must be passed into agent.step function as an array
-            print("Episode finished: ", episode_finished)
-
-            # see if episode has finished
-            if next_state_vector is not None: 
-                agent.step(stateVector, actions, rewards, next_state_vector, episode_finished)
-                stateVector = next_state_vector
-            #Check if scores-agents and rewards are compatible for addition
-            scores_agents = np.add(scores_agents, rewards)
-            # scores_agents += rewards
-            if np.any(episode_finished):
-                break
-
-        # mean score of 20 agents in this episode
-        score = np.mean(scores_agents)
-        scores_deque.append(score)
-        avg_score = np.mean(scores_deque)
-        scores.append(score)
-
-        #refresh the best agent score
-        if score > best_score:
-            best_score = score
-
-        #refresh the best average score    
-        if avg_score > best_average_score:
-            best_average_score = avg_score
-        
-        #print current episode
-        print("Episode:{}, Score:{:.2f}, Best Score:{:.2f}, Average Score:{:.2f}, Best Avg Score:{:.2f}".format(
-            i_episode, score, best_score, avg_score, best_average_score))
-        if (avg_score >= 32):
-            torch.save(agent.actor_local.state_dict(), 'actor_solved.pth')
-            torch.save(agent.critic_local.state_dict(), 'critic_solved.pth')
-            break
-                
-        
-    env.close() 
+    finally:
+        env.close() # Ensure env.close() is alwyas called    
     return scores
 
 start = time.time()

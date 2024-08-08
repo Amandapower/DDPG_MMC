@@ -25,6 +25,7 @@ def _request_handler(headers):
  
 @contextmanager
 def active_session(delay=DELAY, interval=INTERVAL):
+    # yield # modification to try and resolve error
     """
     Example:
  
