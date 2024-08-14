@@ -46,7 +46,7 @@ except Exception as e:
     behavior_name = None
 
 
-agent = Agent(state_size=8, action_size=2, random_seed=2) # Altered from origional to fit new environment
+agent = Agent(state_size=52, action_size=4, random_seed=2) # Altered from origional to fit new environment
 
 # Code runs until this point 
 
@@ -55,7 +55,7 @@ def ddpg(n_episodes=5, max_t=1000):
     print("Enter ddpg...\n")
     scores_deque = deque(maxlen=100)
     scores = []
-    actions = []
+    # actions = []
     best_score = 0
     best_average_score = 0
     try:
@@ -137,7 +137,7 @@ def ddpg(n_episodes=5, max_t=1000):
 
                 # see if episode has finished
                 if next_state_vector is not None: 
-                    agent.step(stateVector, actions, rewards, next_state_vector, episode_finished)
+                    agent.step(stateVector, action_tuple.continuous, rewards, next_state_vector, episode_finished)
                     stateVector = next_state_vector
                 #Check if scores-agents and rewards are compatible for addition
                 scores_agents = np.add(scores_agents, rewards)
